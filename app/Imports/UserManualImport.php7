@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Imports;
+
+use App\Models\IroMapping;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithProgressBar;
+use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\WithStartRow;
+use Maatwebsite\Excel\Concerns\WithUpserts;
+use Illuminate\Support\Facades\DB;
+
+
+class UserManualImport implements ToModel, WithUpserts, WithStartRow
+{
+    /**
+    * @param array $row
+    *
+    * @return \Illuminate\Database\Eloquent\Model|null
+    */
+    public function upsertColumns()
+    {
+        return ['AM_PNO'];
+    }
+
+    public function startRow(): int
+    {
+        return 2;
+    }
+    public function uniqueBy()
+    {
+        return 'AM_PNO';
+    
+    }
+    public function model(array $row)
+    {
+        // \Log::info(json_encode($row));
+        $PIN_NO = $row[0]; 
+        
+        foreach ( $PIN_NO as $pin) {
+            $re2 = DB::table('cpl_mapping_mst')
+                ->where('PIN_NO', '=', $pin)
+                ->first();
+        
+            $aman = '';
+            $tl = '';
+            $sman = '';
+            $tso = '';
+        
+            if ($re2) {
+                $aman = $re2->AM_PNO;
+                $tl = $re2->TL_PNO;
+                $sman = $re2->SM_PNO;
+                $tso = $re2->TSO_PNO;
+            }
+        
+            try {
+                DB::table('cpl_case_mst')->insert([
+                    'PIN_NO' => $pin,
+                    'AM_PNO' => $aman,
+                    'TL_PNO' => $tl,
+                    'SM_PNO' => $sman,
+                    'TSO_PNO' => $tso,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error($e->getMessage());
+            }
+        }
+    }
+}
